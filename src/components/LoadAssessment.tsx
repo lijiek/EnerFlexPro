@@ -1,17 +1,31 @@
-import React, { useState } from 'react';
-import { Card, Table, Spin, Button, message, Upload, Tabs, Statistic, Row, Col } from 'antd';
-import { UploadOutlined, ReloadOutlined } from '@ant-design/icons';
+import React, { useState, useEffect } from 'react';
+import { Card, Table, Spin, Button, message, Upload, Tabs, Statistic, Row, Col, Tooltip, Tag, Progress, Alert, Space, Typography, Divider } from 'antd';
+import { UploadOutlined, ReloadOutlined, InfoCircleOutlined, DownloadOutlined, FundProjectionScreenOutlined, ThunderboltOutlined, RiseOutlined } from '@ant-design/icons';
 import type { UploadFile, UploadProps } from 'antd/es/upload/interface';
 import { Line, Column, Pie } from '../components/Charts';
 import { AssessmentService } from '../services/assessmentService';
 import { AssessmentResult } from '../types/assessment';
 import { RcFile } from 'antd/lib/upload';
 
+const { Title, Text, Paragraph } = Typography;
+const { TabPane } = Tabs;
+
 const LoadAssessment: React.FC = () => {
   const [file, setFile] = useState<UploadFile | null>(null);
   const [results, setResults] = useState<AssessmentResult[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('results');
+  const [forceRender, setForceRender] = useState<number>(0);
+
+  // 当标签页切换时，强制重新渲染图表
+  useEffect(() => {
+    // 等待DOM更新后，触发图表重绘
+    const timer = setTimeout(() => {
+      setForceRender(prev => prev + 1);
+    }, 200);
+    
+    return () => clearTimeout(timer);
+  }, [activeTab]);
 
   // 文件上传处理
   const handleFileChange = (info: any) => {
@@ -24,6 +38,11 @@ const LoadAssessment: React.FC = () => {
       // 直接接收文件，不通过antd的上传功能发送请求
       setFile(info.file);
     }
+  };
+
+  // 标签页切换处理
+  const handleTabChange = (key: string) => {
+    setActiveTab(key);
   };
 
   // 评估数据
@@ -58,32 +77,70 @@ const LoadAssessment: React.FC = () => {
 
   // 表格列定义
   const columns = [
-    { title: '负荷ID', dataIndex: 'loadId', key: 'loadId' },
+    { 
+      title: '负荷ID', 
+      dataIndex: 'loadId', 
+      key: 'loadId',
+      render: (id: string) => (
+        <Tag color="blue">{id}</Tag>
+      )
+    },
     { 
       title: '日前得分', 
       dataIndex: 'dayAheadScore', 
       key: 'dayAheadScore',
-      render: (value: number) => value.toFixed(4),
+      render: (value: number) => (
+        <Tooltip title={`得分: ${value.toFixed(4)}`}>
+          <Progress 
+            percent={Math.round(value * 100)} 
+            size="small" 
+            status={value > 0.7 ? "success" : value > 0.4 ? "normal" : "exception"}
+            format={percent => `${percent}%`}
+          />
+        </Tooltip>
+      ),
       sorter: (a: AssessmentResult, b: AssessmentResult) => a.dayAheadScore - b.dayAheadScore
     },
     { 
       title: '日内得分', 
       dataIndex: 'intraDayScore', 
       key: 'intraDayScore',
-      render: (value: number) => value.toFixed(4),
+      render: (value: number) => (
+        <Tooltip title={`得分: ${value.toFixed(4)}`}>
+          <Progress 
+            percent={Math.round(value * 100)}
+            size="small" 
+            status={value > 0.7 ? "success" : value > 0.4 ? "normal" : "exception"}
+            format={percent => `${percent}%`}
+          />
+        </Tooltip>
+      ),
       sorter: (a: AssessmentResult, b: AssessmentResult) => a.intraDayScore - b.intraDayScore
     },
     { 
       title: '实时得分', 
       dataIndex: 'realTimeScore', 
       key: 'realTimeScore',
-      render: (value: number) => value.toFixed(4),
+      render: (value: number) => (
+        <Tooltip title={`得分: ${value.toFixed(4)}`}>
+          <Progress 
+            percent={Math.round(value * 100)}
+            size="small" 
+            status={value > 0.7 ? "success" : value > 0.4 ? "normal" : "exception"}
+            format={percent => `${percent}%`}
+          />
+        </Tooltip>
+      ),
       sorter: (a: AssessmentResult, b: AssessmentResult) => a.realTimeScore - b.realTimeScore
     },
     { 
       title: '负荷类型', 
       dataIndex: 'type', 
       key: 'type',
+      render: (type: string) => {
+        const color = type === '供能' ? 'green' : type === '用能' ? 'orange' : 'purple';
+        return <Tag color={color}>{type}</Tag>;
+      },
       filters: [
         { text: '供能', value: '供能' },
         { text: '用能', value: '用能' },
@@ -121,7 +178,7 @@ const LoadAssessment: React.FC = () => {
       xField: 'id',
       yField: 'value',
       seriesField: 'type',
-      color: ['#1890ff', '#2ca02c', '#ff7f0e'],
+      color: ['#1677ff', '#52c41a', '#faad14'],
       legend: { position: 'top' as const },
       smooth: true,
       animation: {
@@ -141,7 +198,7 @@ const LoadAssessment: React.FC = () => {
       xField: 'id',
       yField: 'value',
       seriesField: 'type',
-      color: ['#1890ff', '#2ca02c', '#ff7f0e'],
+      color: ['#1677ff', '#52c41a', '#faad14'],
       legend: { position: 'top' as const },
       smooth: true,
       animation: {
@@ -150,6 +207,7 @@ const LoadAssessment: React.FC = () => {
           duration: 1000,
         },
       },
+      autoFit: true,
     };
   };
 
@@ -187,6 +245,7 @@ const LoadAssessment: React.FC = () => {
         content: '{name} {percentage}',
       },
       interactions: [{ type: 'pie-legend-active' }, { type: 'element-active' }],
+      autoFit: true,
     };
   };
 
@@ -232,6 +291,7 @@ const LoadAssessment: React.FC = () => {
           alias: '能源消耗(MW·h)',
         },
       },
+      autoFit: true,
     };
   };
 
@@ -256,150 +316,269 @@ const LoadAssessment: React.FC = () => {
   };
 
   const stats = calculateStats();
-  const tabItems = [
-    {
-      key: 'results',
-      label: '评估结果',
-      children: (
-        <Table 
-          dataSource={results} 
-          columns={columns} 
-          rowKey="loadId" 
-          pagination={false}
-          bordered
-          size="middle"
-          loading={loading}
-        />
-      ),
-    },
-    {
-      key: 'trends',
-      label: '趋势分析',
-      children: (
-        results.length > 0 ? (
-          <Line {...getScoreLineConfig()} height={350} />
-        ) : (
-          <div className="empty-chart">请先评估数据</div>
-        )
-      ),
-    },
-    {
-      key: 'distribution',
-      label: '负荷分布',
-      children: (
-        <Row gutter={16}>
-          <Col span={12}>
-            {results.length > 0 ? (
-              <Pie {...getTypeDistributionConfig()} height={350} />
-            ) : (
-              <div className="empty-chart">请先评估数据</div>
-            )}
-          </Col>
-          <Col span={12}>
-            {results.length > 0 ? (
-              <Column {...getEnergyConfig()} height={350} />
-            ) : (
-              <div className="empty-chart">请先评估数据</div>
-            )}
-          </Col>
-        </Row>
-      ),
-    }
-  ];
 
   return (
     <Spin spinning={loading}>
-      <Card 
-        title="负荷评估与监控" 
-        style={{ marginBottom: 16 }}
-        extra={
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Upload {...uploadProps} onChange={handleFileChange}>
-              <Button icon={<UploadOutlined />}>选择文件</Button>
-            </Upload>
-            <Button type="primary" onClick={assessData} disabled={!file}>
-              开始评估
-            </Button>
-            {results.length > 0 && (
-              <Button icon={<ReloadOutlined />} onClick={assessData}>
-                重新评估
-              </Button>
-            )}
-          </div>
-        }
-      >
-        <Row gutter={16} style={{ marginBottom: 16 }}>
-          <Col span={8}>
-            <Card>
-              <Statistic
-                title="总可调容量"
-                value={stats.totalCapacity}
-                suffix="MW"
-                precision={2}
-              />
-            </Card>
-          </Col>
-          <Col span={8}>
-            <Card>
-              <Statistic
-                title="平均响应效率"
-                value={stats.avgEfficiency}
-                suffix="%"
-                precision={0}
-              />
-            </Card>
-          </Col>
-          <Col span={8}>
-            <Card>
-              <Statistic
-                title="最大响应速率"
-                value={stats.maxResponseRate}
-                suffix="MW/min"
-                precision={2}
-              />
-            </Card>
-          </Col>
-        </Row>
+      <Row gutter={[24, 24]}>
+        <Col span={24}>
+          <Card 
+            className="card-container"
+            variant="outlined"
+            style={{ borderRadius: '8px' }}
+          >
+            <div className="upload-container" style={{ 
+              padding: '20px',
+              border: '2px dashed #d9d9d9',
+              borderRadius: '8px',
+              background: '#fafafa',
+              textAlign: 'center',
+              transition: 'all 0.3s ease',
+              margin: 0
+            }}>
+              {!file ? (
+                <>
+                  <p><UploadOutlined style={{ fontSize: '48px', color: '#1677ff' }} /></p>
+                  <Title level={5}>点击或拖拽文件至此处上传</Title>
+                  <Paragraph type="secondary">支持 .xlsx 格式的 Excel 文件</Paragraph>
+                  <Upload {...uploadProps} onChange={handleFileChange}>
+                    <Button type="primary" icon={<UploadOutlined />}>选择文件</Button>
+                  </Upload>
+                </>
+              ) : (
+                <>
+                  <p><FundProjectionScreenOutlined style={{ fontSize: '48px', color: '#52c41a' }} /></p>
+                  <Title level={5}>已上传文件: {file.name}</Title>
+                  <Space>
+                    <Button type="primary" onClick={assessData} icon={<ThunderboltOutlined />}>
+                      开始评估
+                    </Button>
+                    <Upload {...uploadProps} onChange={handleFileChange}>
+                      <Button icon={<ReloadOutlined />}>更换文件</Button>
+                    </Upload>
+                  </Space>
+                </>
+              )}
+            </div>
+          </Card>
+        </Col>
 
-        <Tabs
-          activeKey={activeTab}
-          onChange={setActiveTab}
-          items={tabItems}
-        />
-      </Card>
+        {results.length > 0 && (
+          <>
+            <Col span={24}>
+              <Row gutter={[24, 24]}>
+                <Col xs={24} sm={8}>
+                  <Card className="stat-card" variant="outlined">
+                    <Statistic
+                      title={<><ThunderboltOutlined /> 总可调容量</>}
+                      value={stats.totalCapacity}
+                      suffix="MW"
+                      precision={2}
+                      valueStyle={{ color: '#1677ff' }}
+                    />
+                  </Card>
+                </Col>
+                <Col xs={24} sm={8}>
+                  <Card className="stat-card" variant="outlined">
+                    <Statistic
+                      title={<><RiseOutlined /> 平均响应效率</>}
+                      value={stats.avgEfficiency}
+                      suffix="%"
+                      precision={0}
+                      valueStyle={{ color: '#52c41a' }}
+                    />
+                  </Card>
+                </Col>
+                <Col xs={24} sm={8}>
+                  <Card className="stat-card" variant="outlined">
+                    <Statistic
+                      title={<><InfoCircleOutlined /> 最大响应速率</>}
+                      value={stats.maxResponseRate}
+                      suffix="MW/min"
+                      precision={2}
+                      valueStyle={{ color: '#faad14' }}
+                    />
+                  </Card>
+                </Col>
+              </Row>
+            </Col>
 
-      <div style={{ marginTop: '20px', padding: '15px', background: '#f5f5f5', borderRadius: '4px' }}>
-        <h3>使用说明：</h3>
-        <p>1. 准备符合格式的Excel文件，包含以下字段（<b>带*为必填</b>）：</p>
-        <ul>
-          <li>负荷编号*</li>
-          <li>响应容量(MW)*</li>
-          <li>响应持续时间(h)*</li>
-          <li>响应成本(元/MW)*</li>
-          <li>响应速率(MW/min)*</li>
-          <li>响应准备时间(min)*</li>
-          <li>有效响应率(%) - 默认95%</li>
-          <li>通信延时(ms) - 默认100ms</li>
-          <li>响应精度(%) - 默认98%</li>
-          <li>可靠性评分(%) - 默认99%</li>
-        </ul>
-        <p>2. 点击"选择文件"按钮上传数据文件</p>
-        <p>3. 点击"开始评估"按钮进行评估</p>
-        <p>4. 系统将自动生成评估结果并下载到本地</p>
-        <p>5. 可以通过标签页切换查看不同的分析视图</p>
-      </div>
-      
-      <style jsx>{`
-        .empty-chart {
-          height: 350px;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          background: #f5f5f5;
-          border-radius: 4px;
-          color: #999;
-        }
-      `}</style>
+            <Col span={24}>
+              <Card 
+                className="card-container"
+                variant="outlined"
+                title="评估结果分析"
+                style={{ borderRadius: '8px' }}
+                extra={
+                  <Button icon={<DownloadOutlined />} onClick={assessData}>
+                    下载评估报告
+                  </Button>
+                }
+              >
+                <Tabs activeKey={activeTab} onChange={handleTabChange}>
+                  <TabPane key="results" tab="详细评估结果">
+                    <Table 
+                      dataSource={results} 
+                      columns={columns} 
+                      rowKey="loadId" 
+                      pagination={{ pageSize: 5 }}
+                      bordered={false}
+                      size="middle"
+                      loading={loading}
+                      scroll={{ x: 'max-content' }}
+                    />
+                  </TabPane>
+                  <TabPane key="trends" tab="评分趋势分析">
+                    <div style={{
+                      background: 'white',
+                      padding: '20px',
+                      borderRadius: '8px',
+                      marginBottom: '24px',
+                      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
+                      height: '400px', // 固定高度
+                      width: '100%',
+                      position: 'relative',
+                      overflow: 'hidden'
+                    }}>
+                      {results.length > 0 ? (
+                        <div key={`line-chart-${forceRender}`} style={{ width: '100%', height: '100%' }}>
+                          <Line {...getScoreLineConfig()} height={360} />
+                        </div>
+                      ) : (
+                        <div style={{
+                          height: '100%',
+                          display: 'flex',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          background: '#f0f2f5',
+                          borderRadius: '8px',
+                          color: '#999'
+                        }}>
+                          请先评估数据
+                        </div>
+                      )}
+                    </div>
+                  </TabPane>
+                  <TabPane key="distribution" tab="负荷分布分析">
+                    <Row gutter={24}>
+                      <Col xs={24} lg={12}>
+                        <div style={{
+                          background: 'white',
+                          padding: '20px',
+                          borderRadius: '8px',
+                          marginBottom: '24px',
+                          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
+                          height: '400px', // 固定高度
+                          width: '100%',
+                          position: 'relative',
+                          overflow: 'hidden'
+                        }}>
+                          <Title level={5}>负荷类型分布</Title>
+                          <Divider style={{ margin: '12px 0' }} />
+                          {results.length > 0 ? (
+                            <div key={`pie-chart-${forceRender}`} style={{ width: '100%', height: 'calc(100% - 50px)' }}>
+                              <Pie {...getTypeDistributionConfig()} height={315} />
+                            </div>
+                          ) : (
+                            <div style={{
+                              height: 'calc(100% - 50px)',
+                              display: 'flex',
+                              justifyContent: 'center',
+                              alignItems: 'center',
+                              background: '#f0f2f5',
+                              borderRadius: '8px',
+                              color: '#999'
+                            }}>
+                              请先评估数据
+                            </div>
+                          )}
+                        </div>
+                      </Col>
+                      <Col xs={24} lg={12}>
+                        <div style={{
+                          background: 'white',
+                          padding: '20px',
+                          borderRadius: '8px',
+                          marginBottom: '24px',
+                          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
+                          height: '400px', // 固定高度
+                          width: '100%',
+                          position: 'relative',
+                          overflow: 'hidden'
+                        }}>
+                          <Title level={5}>能源消耗分析</Title>
+                          <Divider style={{ margin: '12px 0' }} />
+                          {results.length > 0 ? (
+                            <div key={`column-chart-${forceRender}`} style={{ width: '100%', height: 'calc(100% - 50px)' }}>
+                              <Column {...getEnergyConfig()} height={315} />
+                            </div>
+                          ) : (
+                            <div style={{
+                              height: 'calc(100% - 50px)',
+                              display: 'flex',
+                              justifyContent: 'center',
+                              alignItems: 'center',
+                              background: '#f0f2f5',
+                              borderRadius: '8px',
+                              color: '#999'
+                            }}>
+                              请先评估数据
+                            </div>
+                          )}
+                        </div>
+                      </Col>
+                    </Row>
+                  </TabPane>
+                </Tabs>
+              </Card>
+            </Col>
+          </>
+        )}
+
+        <Col span={24}>
+          <Card 
+            variant="outlined"
+            title="使用说明"
+            style={{ borderRadius: '8px' }}
+          >
+            <Alert
+              message="数据要求"
+              description={
+                <ul style={{ paddingLeft: '20px', margin: '8px 0' }}>
+                  <li>准备符合格式的Excel文件，包含以下字段（<Text strong>带*为必填</Text>）：</li>
+                  <ul style={{ paddingLeft: '20px', margin: '8px 0' }}>
+                    <li><Text code>负荷编号*</Text> - 每个负荷的唯一标识</li>
+                    <li><Text code>响应容量(MW)*</Text> - 负荷的可调节容量</li>
+                    <li><Text code>响应持续时间(h)*</Text> - 负荷可持续响应的时间</li>
+                    <li><Text code>响应成本(元/MW)*</Text> - 每MW响应的成本</li>
+                    <li><Text code>响应速率(MW/min)*</Text> - 负荷响应的速度</li>
+                    <li><Text code>响应准备时间(min)*</Text> - 从接收指令到开始响应的时间</li>
+                    <li><Text code>有效响应率(%)</Text> - 默认95%</li>
+                    <li><Text code>通信延时(ms)</Text> - 默认100ms</li>
+                    <li><Text code>响应精度(%)</Text> - 默认98%</li>
+                    <li><Text code>可靠性评分(%)</Text> - 默认99%</li>
+                  </ul>
+                </ul>
+              }
+              type="info"
+              showIcon
+            />
+            <div style={{ height: '16px' }}></div>
+            <Alert
+              message="操作流程"
+              description={
+                <ol style={{ paddingLeft: '20px', margin: '8px 0' }}>
+                  <li>点击"选择文件"按钮上传数据文件</li>
+                  <li>点击"开始评估"按钮进行评估</li>
+                  <li>系统将自动生成评估结果并下载到本地</li>
+                  <li>可以通过标签页切换查看不同的分析视图</li>
+                </ol>
+              }
+              type="success"
+              showIcon
+            />
+          </Card>
+        </Col>
+      </Row>
     </Spin>
   );
 };
